@@ -5,9 +5,10 @@
 # disables "foo references arguments, but none are ever passed."
 
 VERSION="0.9.1"
-APP_NAME="Gitrise"
+APP_NAME="GitMagic"
 STATUS_POLLING_INTERVAL=30
 
+build_id=""
 build_slug=""
 build_url=""
 build_status=0
@@ -18,9 +19,9 @@ build_artifacts_slugs=()
 
 function usage() {
     echo ""
-    echo "Usage: gitrise.sh [-d] [-e] [-h] [-T] [-v]  -a token -s project_slug -w workflow [-b branch|-t tag|-c commit]"
+    echo "Usage: gitmagic.sh [-d] [-e] [-h] [-T] [-v]  -a token -s project_slug -w workflow [-b branch|-t tag|-c commit]"
     echo 
-    echo "  -a, --access-token         <string>    Bitrise access token"
+    echo "  -a, --access-token         <string>    CodeMagic access token"
     echo "  -b, --branch               <string>    Git branch"
     echo "  -c, --commit               <string>    Git commit hash "
     echo "  -d, --debug                            Debug mode enabled"
@@ -29,11 +30,11 @@ function usage() {
     echo "  -h, --help                             Print this help text"
     echo "  -p, --poll                  <string>   Polling interval (in seconds) to get the build status."
     echo "      --stream                           Stream build logs"
-    echo "  -s, --slug                  <string>   Bitrise project slug"
+    echo "  -s, --slug                  <string>   CodeMagic project slug"
     echo "  -T, --test                             Test mode enabled"
     echo "  -t, --tag                   <string>   Git tag"
     echo "  -v, --version                          App version"
-    echo "  -w, --workflow              <string>   Bitrise workflow"
+    echo "  -w, --workflow              <string>   CodeMagic workflow"
     echo 
 }
 
@@ -143,7 +144,7 @@ function validate_input() {
     fi
 }
 
-# map environment variables to objects Bitrise will accept. 
+# map environment variables to objects codemagic will accept. 
 # ENV_STRING is passed as argument
 function process_env_vars() {
     local env_string=""
@@ -176,16 +177,11 @@ function generate_build_payload() {
     local environments=$(process_env_vars "$ENV_STRING")   
     cat << EOF
 {
-  "build_params": {
+    "appId": "$PROJECT_SLUG",
     "branch": "$BRANCH",
     "commit_hash": "$COMMIT",
     "tag": "$TAG",
-    "workflow_id" : "$WORKFLOW",
-    "environments": $environments
-  },
-    "hook_info": {
-      "type": "bitrise"
-  }
+    "workflowId" : "$WORKFLOW"
 }
 EOF
 }
@@ -193,25 +189,28 @@ EOF
 function trigger_build() {
     local response=""
     if [ -z "${TESTING_ENABLED}" ]; then 
-        local command="curl --silent -X POST https://api.bitrise.io/v0.1/apps/$PROJECT_SLUG/builds \
+        local command="curl -i --silent -X POST https://api.codemagic.io/builds \
                 --data '$(generate_build_payload)' \
-                --header 'Accept: application/json' --header 'Authorization: $ACCESS_TOKEN'"
-        response=$(eval "${command}") 
+                --header 'Content-Type: application/json' --header 'x-auth-token: $ACCESS_TOKEN'"
+        response=$(eval "${command}")
     else
         response=$(<./testdata/"$1"_build_trigger_response.json)
     fi
     [ "$DEBUG" == "true" ] && log "${command%'--data'*}" "$response" "trigger_build.log"
     
-    status=$(echo "$response" | jq ".status" | sed 's/"//g' )
-    if [ "$status" != "ok" ]; then
-        msg=$(echo "$response" | jq ".message" | sed 's/"//g')
-        printf "%s" "ERROR: $msg"
+    status_code=$(echo $response | grep HTTP | awk '{print $2}')
+    echo "status code: $status_code"
+    #status=$(echo "$response" | jq ".buildId" | sed 's/"//g' )
+    if [ "$status_code" != 200 ]; then
+        #msg=$(echo "$response" | jq ".buildId" | sed 's/"//g')
+        printf "%s" "ERROR: $response"
         exit 1
     else 
-        build_url=$(echo "$response" | jq ".build_url" | sed 's/"//g')
-        build_slug=$(echo "$response" | jq ".build_slug" | sed 's/"//g')
+        build_id=$(echo "$response" | grep buildId | awk -F'[,:}]' '{print $2}')
+        #build_url=$(echo "$response" | jq ".build_url" | sed 's/"//g')
+        #build_slug=$(echo "$response" | jq ".build_slug" | sed 's/"//g')
     fi
-    printf "\nHold on... We're about to liftoff! 🚀\n \nBuild URL: %s\n" "${build_url}"
+    printf "\nHold on... We're about to liftoff! 🚀\n \nBuild Id: %s\n" "${build_id}"
 }
 
 function process_build() {
@@ -296,6 +295,36 @@ function stream_logs() {
     current_log_chunks_positions=("${log_chunks_positions[@]}")
 }
 
+function get_build_status() {
+    local log_is_archived=false
+    local counter=0
+    local retry=4
+    local polling_interval=15
+    local response=""
+    while ! "$log_is_archived"  && [[ "$counter" -lt "$retry" ]]; do
+        if [ -z "${TESTING_ENABLED}" ] ; then
+            sleep "$polling_interval"
+            local command="curl --silent -X GET https://api.codemagic.io/builds/$build_id \
+                --header 'Content-Type: application/json' --header 'x-auth-token: $ACCESS_TOKEN'"
+            response=$(eval "$command")
+
+        else
+            response="$(< ./testdata/"$1"_log_info_response.json)"
+        fi
+        [ "$DEBUG" == "true" ] && log "${command%'--header'*}" "$response" "get_log_info.log"
+
+        log_is_archived=$(echo "$response" | jq ".is_archived")
+        ((counter++))
+    done
+    log_url=$(echo "$response" | jq ".expiring_raw_log_url" | sed 's/"//g')
+    if ! "$log_is_archived" || [ -z "$log_url" ]; then
+        echo "LOGS WERE NOT AVAILABLE - navigate to $build_url to see the logs."
+        exit ${exit_code}
+    else
+        print_logs "$log_url"
+    fi
+}
+
 function get_build_logs() {
     local log_is_archived=false
     local counter=0
@@ -331,10 +360,10 @@ function print_logs() {
     local logs=$(curl --silent -X GET "$url")
 
     echo "================================================================================"
-    echo "============================== Bitrise Logs Start =============================="
+    echo "============================== CodeMagic Logs Start =============================="
     echo "$logs"
     echo "================================================================================"
-    echo "==============================  Bitrise Logs End  =============================="
+    echo "==============================  CodeMagic Logs End  =============================="
 
 }
 
@@ -432,7 +461,7 @@ function log() {
 if [ "$0" = "${BASH_SOURCE[0]}" ] && [ -z "${TESTING_ENABLED}" ]; then
     validate_input
     trigger_build
-    process_build
+    #process_build
     [ -z "$STREAM" ] && get_build_logs 
     build_status_message "$build_status"
     [ -n "$BUILD_ARTIFACTS" ] && download_build_artifacts
