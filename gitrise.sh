@@ -301,36 +301,6 @@ function get_build_status() {
     fi
 }
 
-function get_build_logs() {
-    local log_is_archived=false
-    local counter=0
-    local retry=4
-    local polling_interval=15
-    local response=""
-    while ! "$log_is_archived"  && [[ "$counter" -lt "$retry" ]]; do
-        if [ -z "${TESTING_ENABLED}" ] ; then
-            sleep "$polling_interval"
-            local command="curl --silent -X GET https://api.bitrise.io/v0.1/apps/$PROJECT_SLUG/builds/$build_slug/log \
-                --header 'Accept: application/json' --header 'Authorization: $ACCESS_TOKEN'"
-            response=$(eval "$command")
-
-        else
-            response="$(< ./testdata/"$1"_log_info_response.json)"
-        fi
-        [ "$DEBUG" == "true" ] && log "${command%'--header'*}" "$response" "get_log_info.log"
-
-        log_is_archived=$(echo "$response" | jq ".is_archived")
-        ((counter++))
-    done
-    log_url=$(echo "$response" | jq ".expiring_raw_log_url" | sed 's/"//g')
-    if ! "$log_is_archived" || [ -z "$log_url" ]; then
-        echo "LOGS WERE NOT AVAILABLE - navigate to $build_url to see the logs."
-        exit ${exit_code}
-    else
-        print_logs "$log_url"
-    fi
-}
-
 function print_logs() {
     local url="$1"
     local logs=$(curl --silent -X GET "$url")
