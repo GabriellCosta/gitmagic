@@ -6,17 +6,17 @@
 # var is referenced but not assigned.
 # var appears unused
 
-source ./gitrise.sh -T
+source ./gitrise.sh -T -s slug_id_test
 
 testFetchingBuildSlug() {
-    local expected_slug="546yw9284a8g1205"
+    local expected_slug="slug_id_test"
     trigger_build "successful" > /dev/null
     local actual_slug=${build_slug}
     assertEquals "build_slugs did not match" "${expected_slug}"  "${actual_slug}"
 }
 
 testFetchingBuildUrl() {
-    local expected_url="https://test.io/build/546yw9284a8g1205"
+    local expected_url="https://codemagic.io/app/slug_id_test/build/5fabc6414c483700143f4f92"
     local result=$(trigger_build "successful")
     local actual_url=$(echo "$result" | grep -Eo 'https://[^ >]+')
     assertEquals "expected_url is ${expected_url}, but received ${actual_url}" "${expected_url}"  "${actual_url}"

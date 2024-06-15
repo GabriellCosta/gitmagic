@@ -206,9 +206,9 @@ function trigger_build() {
         printf "%s" "ERROR: $response"
         exit 1
     else 
-        build_id=$(echo "$response" | grep buildId | awk -F'[,:}]' '{print $2}')
-        #build_url=$(echo "$response" | jq ".build_url" | sed 's/"//g')
-        #build_slug=$(echo "$response" | jq ".build_slug" | sed 's/"//g')
+        build_id=$status
+        build_url="https://codemagic.io/app/$PROJECT_SLUG/build/$build_id"
+        build_slug=$PROJECT_SLUG
     fi
     printf "\nHold on... We're about to liftoff! 🚀\n \nBuild Id: %s\n" "${build_id}"
 }
@@ -264,9 +264,9 @@ function handle_status_response() {
 function contains_in_array() {
     local array=$1
     if [[ "${array[*]}" =~ (^|[^[:alpha:]])$2([^[:alpha:]]|$) ]]; then
-        return 0
+        echo "true"
     else
-        return 1
+        echo "false"
     fi
 }
 
@@ -285,12 +285,11 @@ function get_build_status() {
             response=$(eval "$command")
 
         else
-            echo "entered here"
             response="$(< ./testdata/"$1"_log_info_response.json)"
         fi
         [ "$DEBUG" == "true" ] && log "${command%'--header'*}" "$response" "get_log_info.log"
 
-        log_is_archived=true
+        log_is_archived=$(contains_in_array $finished_build $response)
         ((counter++))
     done
     #log_url=$(echo "$response" | jq ".expiring_raw_log_url" | sed 's/"//g')
