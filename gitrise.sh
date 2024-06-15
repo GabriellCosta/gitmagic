@@ -189,7 +189,7 @@ EOF
 function trigger_build() {
     local response=""
     if [ -z "${TESTING_ENABLED}" ]; then 
-        local command="curl -i --silent -X POST https://api.codemagic.io/builds \
+        local command="curl --silent -X POST https://api.codemagic.io/builds \
                 --data '$(generate_build_payload)' \
                 --header 'Content-Type: application/json' --header 'x-auth-token: $ACCESS_TOKEN'"
         response=$(eval "${command}")
@@ -198,10 +198,10 @@ function trigger_build() {
     fi
     [ "$DEBUG" == "true" ] && log "${command%'--data'*}" "$response" "trigger_build.log"
     
-    status_code=$(echo $response | grep HTTP | awk '{print $2}')
-    echo "status code: $status_code"
-    #status=$(echo "$response" | jq ".buildId" | sed 's/"//g' )
-    if [ "$status_code" != 200 ]; then
+    #status_code=$(echo $response | grep HTTP | awk '{print $2}')
+    #echo "status code: $status_code"
+    status=$(echo "$response" | jq ".buildId" | sed 's/"//g' )
+    if [[ -z "$status" ]]; then
         #msg=$(echo "$response" | jq ".buildId" | sed 's/"//g')
         printf "%s" "ERROR: $response"
         exit 1
@@ -230,8 +230,8 @@ function check_build_status() {
     local response=""
     local retry=3
     if [ -z "${TESTING_ENABLED}" ]; then
-        local command="curl --silent -X GET -w \"status_code:%{http_code}\" https://api.bitrise.io/v0.1/apps/$PROJECT_SLUG/builds/$build_slug \
-            --header 'Accept: application/json' --header 'Authorization: $ACCESS_TOKEN'"
+        local command="curl --silent -X GET -w \"status_code:%{http_code}\" https://api.codemagic.io/builds/$build_id \
+            --header 'Content-Type: application/json' --header 'x-auth-token: $ACCESS_TOKEN'"
         response=$(eval "${command}")
     else
         response=$(< ./testdata/"$1")
@@ -245,7 +245,7 @@ function check_build_status() {
             build_status=0
             ((status_counter++))
         else
-            echo "ERROR: Invalid response received from Bitrise API"
+            echo "ERROR: Invalid response received from CodeMagic API"
             build_status="null" 
         fi
     fi
@@ -253,46 +253,21 @@ function check_build_status() {
 
 function handle_status_response() {
     local response="$1"
-    local build_status_text=$(echo "$response" | jq ".data .status_text" | sed 's/"//g')
+    local build_status_text=$(echo "$response" | jq ".build .status" | sed 's/"//g')
     if [ "$build_status_text" != "$current_build_status_text" ]; then
         echo "Build $build_status_text"
         current_build_status_text="${build_status_text}"
     fi
-    build_status=$(echo "$response" | jq ".data .status")
+    build_status=$(echo "$response" | jq ".build .status")
 }
 
-function stream_logs() {
-    local response=""
-    local log_chunks_positions=()
-
-    if [ -z "${TESTING_ENABLED}" ] ; then
-        local command="curl --silent -X GET https://api.bitrise.io/v0.1/apps/$PROJECT_SLUG/builds/$build_slug/log \
-            --header 'Accept: application/json' --header 'Authorization: $ACCESS_TOKEN'"
-        response=$(eval "$command")
+function contains_in_array() {
+    local array=$1
+    if [[ "${array[*]}" =~ (^|[^[:alpha:]])$2([^[:alpha:]]|$) ]]; then
+        return 0
     else
-        response="$(< ./testdata/"$1"_log_info_response.json)"
+        return 1
     fi
-    [ "$DEBUG" == "true" ] && log "${command%'--header'*}" "$response" "get_log_info.log"
-    # Every chunk has an accompanying position. Storing the chunks' positions to track the chunks.
-    while IFS='' read -r line; do log_chunks_positions+=("$line"); done < <(echo "$response" | jq ".log_chunks[].position")
-    new_log_chunck_positions=()
-    for i in "${log_chunks_positions[@]}"; do
-        skip=
-        for j in "${current_log_chunks_positions[@]}"; do
-            [[ $i == "$j" ]] && { skip=1; break; }
-        done
-        [[ -z $skip ]] && new_log_chunck_positions+=("$i")
-    done
-    if [[ ${#new_log_chunck_positions[@]} != 0 ]]; then
-        for i in "${new_log_chunck_positions[@]}"; do
-            parsed_chunk=$(echo "$response" | jq --arg index "$i" '.log_chunks[] | select(.position == ($index | tonumber)) | .chunk')
-            cleaned_chunk=$(echo "${parsed_chunk}" | sed -e 's/^"//' -e 's/"$//') 
-            printf "%b" "$cleaned_chunk"
-        done
-    else
-        return
-    fi
-    current_log_chunks_positions=("${log_chunks_positions[@]}")
 }
 
 function get_build_status() {
@@ -301,6 +276,7 @@ function get_build_status() {
     local retry=4
     local polling_interval=15
     local response=""
+    local finished_build=("canceled" "finished" "failed" "skipped" "timeout")
     while ! "$log_is_archived"  && [[ "$counter" -lt "$retry" ]]; do
         if [ -z "${TESTING_ENABLED}" ] ; then
             sleep "$polling_interval"
@@ -309,15 +285,16 @@ function get_build_status() {
             response=$(eval "$command")
 
         else
+            echo "entered here"
             response="$(< ./testdata/"$1"_log_info_response.json)"
         fi
         [ "$DEBUG" == "true" ] && log "${command%'--header'*}" "$response" "get_log_info.log"
 
-        log_is_archived=$(echo "$response" | jq ".is_archived")
+        log_is_archived=true
         ((counter++))
     done
-    log_url=$(echo "$response" | jq ".expiring_raw_log_url" | sed 's/"//g')
-    if ! "$log_is_archived" || [ -z "$log_url" ]; then
+    #log_url=$(echo "$response" | jq ".expiring_raw_log_url" | sed 's/"//g')
+    if ! "$log_is_archived"; then
         echo "LOGS WERE NOT AVAILABLE - navigate to $build_url to see the logs."
         exit ${exit_code}
     else
@@ -461,8 +438,8 @@ function log() {
 if [ "$0" = "${BASH_SOURCE[0]}" ] && [ -z "${TESTING_ENABLED}" ]; then
     validate_input
     trigger_build
-    #process_build
-    [ -z "$STREAM" ] && get_build_logs 
+    process_build
+    [ -z "$STREAM" ] && get_build_status 
     build_status_message "$build_status"
     [ -n "$BUILD_ARTIFACTS" ] && download_build_artifacts
     exit ${exit_code}
