@@ -1,8 +1,8 @@
-# Gitrise 
+# GitMagic 
 [![Release](https://img.shields.io/github/release/azohra/gitrise.sh.svg)](https://github.com/azohra/gitrise.sh/releases)
 [![Mainline Status](https://github.com/azohra/gitrise.sh/workflows/CI-workflow/badge.svg)](https://github.com/azohra/gitrise.sh/actions?query=branch%3Adevelop)
 
-A Bitrise trigger in pure `bash`!
+A CodeMagic trigger in pure `bash`!
 
 ![](docs/images/gitrise.png)
 
