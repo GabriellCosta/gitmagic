@@ -3,7 +3,7 @@
 # shellcheck disable=SC1091,SC2155,SC2154
 # Not following: (error message here)
 
-source ./gitrise.sh -T -d
+source ./gitmagic.sh -T -d
 
 testDebugMode() {
     assertTrue "DEBUG is not set to 'true'" "$DEBUG"

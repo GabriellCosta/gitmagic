@@ -3,7 +3,7 @@
 # shellcheck disable=SC1091,SC2155
 # Not following: (error message here)
 # Declare and assign separately to avoid masking return values.
-source ./gitrise.sh -T
+source ./gitmagic.sh -T
 
 testEnvVars() {
     local expected="[{\"mapped_to\":\"CODE_COVERAGE\",\"value\":\"true\",\"is_expand\":true},{\"mapped_to\":\"ENVIRONMENT\",\"value\":\"UAT\",\"is_expand\":true}]"
@@ -25,13 +25,13 @@ testPassingFileAsEnvVar() {
 
 testHelp() {
     local expected=$(usage)
-    local actual=$(./gitrise.sh -h)
+    local actual=$(./gitmagic.sh -h)
     assertEquals "$expected" "$actual"
 }
 
 testVersion() {
     local expected_version="$VERSION"
-    local result=$(./gitrise.sh -v)
+    local result=$(./gitmagic.sh -v)
     local actual_version=$(echo "$result" | grep -o '[0-9]\{1,\}.[0-9]\{1,\}.[0-9]\{1,\}')
     assertEquals "${expected_version}" "${actual_version}"
 }
@@ -42,7 +42,7 @@ testTestingModeOption() {
 
 testBranchOption() {
     local expected_branch="test_branch"
-    source ./gitrise.sh -b test_branch
+    source ./gitmagic.sh -b test_branch
     local actual_branch="$BRANCH"
     assertEquals "${expected_branch}" "${actual_branch}"
 }
@@ -50,7 +50,7 @@ testBranchOption() {
 testTagAndCommitOptions() {
     local expected_tag="test_tag"
     local expected_commit="test_commit"
-    source ./gitrise.sh -b test_branch -t test_tag -c test_commit
+    source ./gitmagic.sh -b test_branch -t test_tag -c test_commit
     local actual_tag="$TAG"
     local actual_commit="$COMMIT"
     assertEquals "${expected_tag}" "${actual_tag}"
@@ -59,34 +59,34 @@ testTagAndCommitOptions() {
 
 testWrongUsage() {
     local expected=$(printf "Invalid option '-w,'\n%s" "$(usage)")
-    local result=$(./gitrise.sh -w, test_workflow)
+    local result=$(./gitmagic.sh -w, test_workflow)
     assertEquals "$expected" "$result"
 }
 
 testStreamOption() {
     local expected="true"
-    source ./gitrise.sh --stream -b test_branch -w workflow
+    source ./gitmagic.sh --stream -b test_branch -w workflow
     local actual="$STREAM"
     assertEquals "$expected" "$actual"
 }
  
 testDefaultPollingIntervalOption() {
     local expected=30
-    source ./gitrise.sh -b test_branch -w workflow
+    source ./gitmagic.sh -b test_branch -w workflow
     local actual="$STATUS_POLLING_INTERVAL"
     assertEquals "$expected" "$actual"
 }
 
 testSettingPollingInterval() {
     local expected=20
-    source ./gitrise.sh -b test_branch -w workflow -p 20
+    source ./gitmagic.sh -b test_branch -w workflow -p 20
     local actual="$STATUS_POLLING_INTERVAL"
     assertEquals "$expected" "$actual"
 }
 
 testPassingBuildArtifactsToDownload() {
     local expected=".ipa,.app.dSYM.zip"
-    source ./gitrise.sh -b test_branch -w workflow --download-artifacts .ipa,.app.dSYM.zip
+    source ./gitmagic.sh -b test_branch -w workflow --download-artifacts .ipa,.app.dSYM.zip
     local actual="$BUILD_ARTIFACTS"
     assertEquals "Build artifacts do not match" "$expected" "$actual"
 }

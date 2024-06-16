@@ -1,25 +1,12 @@
 {
-    "log_chunks":
-    [
-        {
-            "chunk":"Build started.\n",
-            "position":1
-        },
-        {
-            "chunk":"This is just for testing.\n",
-            "position":2
-        },
-        {
-            "chunk":"Test finished.\n",
-            "position":3
-        },
-        {
-            "chunk":"exit status 0",
-            "position":4
-        }
-    ],
-    "next_before_timestamp":"2021-09-10T15:27:15.345Z",
-    "next_after_timestamp":"2021-09-10T15:27:31.178Z",
-    "is_archived":false,
-    "expiring_raw_log_url":"null"
-}
+    "application": {
+      "_id": "5d85eaa0e941e00019e81bc2",
+      "appName": "counter_flutter"
+    },
+    "build": {
+      "_id": "5ec8eea2261f342603f4d0bc",
+      "startedAt": "2020-05-23T09:36:39.028+0000",
+      "status": "queue",
+      "workflowId": "5d85f242e941e00019e81bd2"
+    }
+  }

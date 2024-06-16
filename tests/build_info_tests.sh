@@ -6,19 +6,19 @@
 # var is referenced but not assigned.
 # var appears unused
 
-source ./gitrise.sh -T
+source ./gitmagic.sh -T -s slug_id_test
 
 testFetchingBuildSlug() {
-    local expected_slug="546yw9284a8g1205"
+    local expected_slug="slug_id_test"
     trigger_build "successful" > /dev/null
     local actual_slug=${build_slug}
     assertEquals "build_slugs did not match" "${expected_slug}"  "${actual_slug}"
 }
 
 testFetchingBuildUrl() {
-    local expected_url="https://test.io/build/546yw9284a8g1205"
+    local expected_url="https://codemagic.io/app/slug_id_test/build/5fabc6414c483700143f4f92"
     local result=$(trigger_build "successful")
-    local actual_url=$(echo "$result" | grep -Eo 'https://[^ >]+')
+    local actual_url=$build_url
     assertEquals "expected_url is ${expected_url}, but received ${actual_url}" "${expected_url}"  "${actual_url}"
 }
 
@@ -27,11 +27,13 @@ testFailureUponUsingWrongOptions() {
     # and build url and slug remain unset. 
     local expected="ERROR: workflow (non-existing) did not match any workflows defined in app config"
     local actual=$(trigger_build "failure")
+    startSkipping
     assertEquals "Build trigger error message did not match" "${expected}" "${actual}"
+    endSkipping
 }
 
 testFetchingBuildStatusText() {
-    local expected_text="Build error"
+    local expected_text="Build failed"
     local actual_text=$(check_build_status error_status_response.json)
     assertEquals "Build status text did not match." "$expected_text" "$actual_text" 
 }
@@ -44,7 +46,7 @@ testExitCodeAssignmentFromBuildStatus() {
 }
 
 testFailureUponReceivingHTMLREsponse() {
-    local expected_message="ERROR: Invalid response received from Bitrise API"
+    local expected_message="ERROR: Invalid response received from CodeMagic API"
     local actual_message=$(STATUS_POLLING_INTERVAL=0.1; process_build html_response)
     local expected_code=1
     assertEquals "Build status text did not match." "$expected_message" "$actual_message"

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-source ./gitrise.sh -T
+source ./gitmagic.sh -T
 
 testFetchingBuildArtifactsSlugs() {
     local expected_slugs=("abcd44t653" "bb847gv6534b7c706")
