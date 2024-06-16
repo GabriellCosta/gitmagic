@@ -6,7 +6,7 @@
 # var is referenced but not assigned.
 # var appears unused
 
-source ./gitrise.sh -T -s slug_id_test
+source ./gitmagic.sh -T -s slug_id_test
 
 testFetchingBuildSlug() {
     local expected_slug="slug_id_test"

@@ -5,7 +5,7 @@
 # Declare and assign separately to avoid masking return values.
 # var is referenced but not assigned.
 
-source ./gitrise.sh -T -s slug_id_test
+source ./gitmagic.sh -T -s slug_id_test
  
 testLogNotArchived() {
     local expected_message="LOGS WERE NOT AVAILABLE - navigate to https://codemagic.io/app/slug_id_test/build/5fabc6414c483700143f4f92 to see the logs."
