@@ -181,7 +181,8 @@ function generate_build_payload() {
     "branch": "$BRANCH",
     "commit_hash": "$COMMIT",
     "tag": "$TAG",
-    "workflowId" : "$WORKFLOW"
+    "workflowId" : "$WORKFLOW",
+    "environment": { "variables" : "$environments" }
 }
 EOF
 }
@@ -215,7 +216,6 @@ function trigger_build() {
 
 function process_build() {
     local status_counter=0
-    local current_log_chunks_positions=()
     while [ "${build_status}" = 0 ]; do
         # Parameter is a test json file name and is only passed for testing. 
         check_build_status "$1"
@@ -289,7 +289,7 @@ function get_build_status() {
         fi
         [ "$DEBUG" == "true" ] && log "${command%'--header'*}" "$response" "get_log_info.log"
 
-        log_is_archived=$(contains_in_array "$finished_build" "$response")
+        log_is_archived=$(contains_in_array "$finished_build{0}" "$response")
         ((counter++))
     done
     #log_url=$(echo "$response" | jq ".expiring_raw_log_url" | sed 's/"//g')
