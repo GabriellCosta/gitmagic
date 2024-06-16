@@ -289,7 +289,7 @@ function get_build_status() {
         fi
         [ "$DEBUG" == "true" ] && log "${command%'--header'*}" "$response" "get_log_info.log"
 
-        log_is_archived=$(contains_in_array "$finished_build{0}" "$response")
+        log_is_archived=$(contains_in_array "${finished_build[0]}" "$response")
         ((counter++))
     done
     #log_url=$(echo "$response" | jq ".expiring_raw_log_url" | sed 's/"//g')
