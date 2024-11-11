@@ -6,9 +6,8 @@ RUN apk update \
     && apk add --no-cache bash \
     && rm -rf /var/cache/apk
 
-copy gitmagic.sh /app/gitmagic.sh
+COPY gitmagic.sh /usr/local/bin/gitmagic
+RUN chmod +x /usr/local/bin/gitmagic
 
-RUN chmod +x /app/gitmagic.sh
-
-# Define the command to run the script
-CMD [ "/app/gitmagic.sh" ]
+# Make the gitmagic command available globally
+ENV PATH="/usr/local/bin:${PATH}"
