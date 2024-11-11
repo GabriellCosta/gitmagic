@@ -2,6 +2,10 @@ name: Release
 
 on: workflow_dispatch
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
 jobs:
   github_release:
     runs-on: ubuntu-latest 
@@ -12,9 +16,9 @@ jobs:
       uses: ncipollo/release-action@v1
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
-        tag: v0.9.1
-        name: GitMagic v0.9.1
-        bodyFile: ./docs/release_notes/v0.9.1.md
+        tag: v0.9.2
+        name: GitMagic v0.9.2
+        bodyFile: ./docs/release_notes/v0.9.2.md
   
   push_to_registry:
     name: Push Docker image to Docker Hub
